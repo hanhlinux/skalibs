@@ -7,11 +7,6 @@
 
 it: all
 
-make_need := 3.81
-ifeq "" "$(strip $(filter $(make_need), $(firstword $(sort $(make_need) $(MAKE_VERSION)))))"
-fail := $(error Your make ($(MAKE_VERSION)) is too old. You need $(make_need) or newer)
-endif
-
 CC = $(error Please use ./configure first)
 
 -include config.mak
@@ -24,9 +19,6 @@ CPPFLAGS_ALL := $(CPPFLAGS_AUTO) $(CPPFLAGS)
 CFLAGS_ALL := $(CFLAGS_AUTO) $(CFLAGS)
 LDFLAGS_ALL := $(LDFLAGS_AUTO) $(LDFLAGS)
 LDLIBS_ALL := $(LDLIBS_AUTO) $(LDLIBS)
-AR := $(CROSS_COMPILE)ar
-RANLIB := $(CROSS_COMPILE)ranlib
-STRIP := $(CROSS_COMPILE)strip
 INSTALL := ./tools/install.sh
 
 TYPES := size uid gid pid time dev ino

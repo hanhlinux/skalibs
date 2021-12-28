@@ -86,6 +86,18 @@ cmdexists () {
   type "$1" >/dev/null 2>&1
 }
 
+tryar () {
+  test -z "$AR_AUTO" && cmdexists "$1" && AR_AUTO="$*"
+}
+
+tryranlib () {
+  test -z "$RANLIB_AUTO" && cmdexists "$1" && RANLIB_AUTO="$*"
+}
+
+trystrip () {
+  test -z "$STRIP_AUTO" && cmdexists "$1" && STRIP_AUTO="$*"
+}
+
 trycc () {
   test -z "$CC_AUTO" && cmdexists "$1" && CC_AUTO="$*"
 }
@@ -336,7 +348,11 @@ trylibs () {
 # The script starts HERE.
 
 # Initialize variables
+i=1
 CC_AUTO=
+AR_AUTO=
+RANLIB_AUTO=
+STRIP_AUTO=
 CPPFLAGS_AUTO="-D_POSIX_C_SOURCE=200809L -D_XOPEN_SOURCE=700 -Isrc/include"
 CPPFLAGS_POST="$CPPFLAGS"
 CPPFLAGS=
@@ -530,6 +546,7 @@ trycc ${cross}clang
 trycc ${cross}cc
 test -n "$CC_AUTO" || fail "$0: cannot find a C compiler"
 echo "  ... $CC_AUTO"
+
 echo "Checking whether C compiler works... "
 echo "typedef int x;" > "$tmpc"
 if $CC_AUTO $CPPFLAGS_AUTO $CPPFLAGS $CPPFLAGS_POST $CFLAGS_AUTO $CFLAGS $CFLAGS_POST -c -o "$tmpo" "$tmpc" 2>"$tmpe" ; then
@@ -539,6 +556,56 @@ else
   cat < "$tmpe"
   exit 1
 fi
+
+echo "Checking for ar..."
+if test -z "$AR"; then
+  test -n "$cross" && AR=${cross}-ar || AR=ar
+fi
+tryar ${AR}
+test -n "$AR_AUTO" || fail "$0: cannot find AR" 
+echo "  ...$AR"
+
+echo "Checking for ranlib..."
+if test -z "$RANLIB"; then
+  test -n "$cross" && RANLIB=${cross}-ranlib || RANLIB=ranlib
+fi
+tryranlib ${RANLIB}
+test -n "$RANLIB_AUTO" || fail "$0: cannot find RANLIB"
+echo "  ...$RANLIB"
+
+echo "Checking for strip..."
+if test -z "$STRIP"; then
+  test -n "$cross" && STRIP=${cross}-strip || STRIP=strip
+fi
+trystrip ${STRIP}
+test -n "$STRIP_AUTO" || fail "$0: cannot find STRIP" 
+echo "  ...$STRIP"
+
+echo "Checking for grep..."
+if ! command -v grep > /dev/null 2>&1; then
+  fail "$0: cannot find grep"
+fi
+echo "  ...grep"
+
+echo "Checking for GNU make..."
+test -z "$MAKE" && MAKE=make
+$MAKE --version | grep "GNU Make" > .tmp
+test -n "$(cat .tmp)" || fail "$0: cannot find GNU make"
+echo "  ...$MAKE"
+
+echo "Checking if GNU make is newer than 3.81..."
+sed 's/GNU Make //g' -i .tmp
+sed 's/\./ /g' -i .tmp
+for x in $(cat .tmp); do
+  if [ $i -eq 1 ]; then
+    test $x -gt 3 && break
+    test $x -eq 3 && i=i+1
+    test $x -lt 3 && fail "$0: GNU make is too old."
+  elif [ $i -eq 2 ]; then
+    test $x -ge 81 && break || fail "$0: GNU make is too old"
+  fi
+done
+echo "  ...yes"
 
 echo "Checking target system type..."
 if test -z "$target" ; then
@@ -674,6 +741,9 @@ SYSCLOCK_LIB := ${sysclock_lib}
 TIMER_LIB := ${timer_lib}
 UTIL_LIB := ${util_lib}
 CC := ${CC_AUTO}
+AR := ${AR_AUTO}
+RANLIB := ${RANLIB_AUTO}
+STRIP := ${STRIP_AUTO}
 CPPFLAGS_AUTO := $CPPFLAGS_AUTO
 CPPFLAGS := $CPPFLAGS $CPPFLAGS_POST
 CFLAGS_AUTO := $CFLAGS_AUTO
